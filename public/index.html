@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Conversor e Juntador Word → PDF</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Biblioteca PDF-Lib para juntar as páginas dos PDFs mantendo 100% da formatação individual -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h1>Conversor e Juntador Word → PDF</h1>
+          <p class="subtitle">Converta múltiplos arquivos do Microsoft Word e junte-os em um único PDF na ordem desejada</p>
+        </div>
+      </div>
+      <div class="status-pill" id="serverStatus">
+        <span class="status-dot"></span>
+        <span id="serverStatusText">Microsoft Word conectado</span>
+      </div>
+    </header>
+
+    <main class="main-grid">
+      <!-- Zona de Upload / Drag and Drop -->
+      <section class="card upload-section">
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="fileInput" multiple accept=".docx,.doc,.rtf,.odt,.pdf" hidden />
+          <div class="dropzone-icon">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <h2>Arraste seus arquivos Word aqui</h2>
+          <p>ou <button type="button" class="link-btn" id="browseBtn">clique para selecionar do computador</button></p>
+          <span class="supported-badges">Suporta: <strong>.DOCX</strong>, <strong>.DOC</strong>, <strong>.RTF</strong> e <strong>.PDF</strong></span>
+        </div>
+      </section>
+
+      <!-- Lista Ordenável de Arquivos -->
+      <section class="card queue-section" id="queueSection">
+        <div class="queue-header">
+          <div>
+            <h3>Ordem dos Arquivos <span class="badge-count" id="fileCountBadge">0</span></h3>
+            <p class="queue-hint">Arraste os itens ou use as setas <strong>↑ ↓</strong> para definir a ordem exata no PDF final.</p>
+          </div>
+          <div class="queue-toolbar">
+            <button type="button" class="btn btn-secondary btn-sm" id="addMoreBtn" title="Adicionar mais arquivos">
+              + Adicionar
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="sortAzBtn" title="Ordenar de A a Z pelo nome">
+              A → Z
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="reverseBtn" title="Inverter a ordem atual">
+              ⇅ Inverter
+            </button>
+            <button type="button" class="btn btn-danger-ghost btn-sm" id="clearAllBtn" title="Remover todos os arquivos">
+              Limpar
+            </button>
+          </div>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <p>Nenhum arquivo selecionado ainda. Adicione 1 ou mais documentos acima para começar.</p>
+        </div>
+
+        <ul class="file-list" id="fileList"></ul>
+
+        <!-- Configurações de Saída e Botão de Ação -->
+        <div class="action-bar" id="actionBar">
+          <div class="output-config">
+            <label for="outputName">Nome do arquivo PDF final:</label>
+            <div class="input-with-ext">
+              <input type="text" id="outputName" value="Documento_Unificado" placeholder="Ex: Relatorio_Final" />
+              <span class="ext-tag">.pdf</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-lg" id="convertBtn" disabled>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <path d="M9 15l2 2 4-4"></path>
+            </svg>
+            <span>Converter e Juntar em PDF</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Barra de Progresso / Status -->
+      <section class="card status-card hidden" id="progressCard">
+        <div class="progress-info">
+          <div class="spinner" id="progressSpinner"></div>
+          <div>
+            <h4 id="progressTitle">Convertendo documentos no Microsoft Word...</h4>
+            <p id="progressDetail">Aguarde enquanto mantemos a formatação original de cada arquivo.</p>
+          </div>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBarFill" style="width: 25%"></div>
+        </div>
+      </section>
+
+      <!-- Painel de Sucesso / Download -->
+      <section class="card result-card hidden" id="resultCard">
+        <div class="result-content">
+          <div class="result-icon">✓</div>
+          <div class="result-text">
+            <h3 id="resultTitle">PDF Gerado com Sucesso!</h3>
+            <p id="resultSummary">Seus arquivos foram convertidos e unificados preservando toda a formatação.</p>
+          </div>
+          <div class="result-actions">
+            <a id="previewPdfBtn" class="btn btn-secondary" target="_blank" rel="noopener">
+              Abrir no Navegador
+            </a>
+            <a id="downloadPdfBtn" class="btn btn-success">
+              Baixar PDF Unificado
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Alerta de Erro -->
+      <section class="card error-card hidden" id="errorCard">
+        <div class="error-content">
+          <strong>Ocorreu um problema:</strong>
+          <p id="errorMessage"></p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
